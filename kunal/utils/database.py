@@ -68,9 +68,10 @@ class Database:
             return e
 
     async def save_forwarded(self, source_chat_id, source_msg_id, target_msg_id, media_type=None, file_name=None, file_hash=None, file_size=0, mime_type=None):
+        parsed_chat_id = int(source_chat_id) if str(source_chat_id).lstrip('-').isdigit() else str(source_chat_id)
         await self.forwarded.update_one(
             {
-                'source_chat_id': int(source_chat_id),
+                'source_chat_id': parsed_chat_id,
                 'source_msg_id': int(source_msg_id)
             },
             {
@@ -87,8 +88,9 @@ class Database:
         )
 
     async def get_forwarded(self, source_chat_id, source_msg_id):
+        parsed_chat_id = int(source_chat_id) if str(source_chat_id).lstrip('-').isdigit() else str(source_chat_id)
         doc = await self.forwarded.find_one({
-            'source_chat_id': int(source_chat_id),
+            'source_chat_id': parsed_chat_id,
             'source_msg_id': int(source_msg_id)
         })
         return doc
