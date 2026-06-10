@@ -49,6 +49,8 @@ async def render_page(id, secure_hash, src=None):
     file_size = humanbytes(file_data.file_size)
     if tag in ["video", "audio"]:
         template_file = "kunal/template/req.html"
+    elif file_data.mime_type == "application/pdf" or file_data.file_name.lower().endswith(".pdf"):
+        template_file = "kunal/template/pdf.html"
     else:
         template_file = "kunal/template/dl.html"
         async with aiohttp.ClientSession() as s:
