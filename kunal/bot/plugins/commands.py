@@ -58,8 +58,17 @@ async def start(b, m):
         await db.add_user(m.from_user.id)
         await b.send_message(Var.NEW_USER_LOG, f"#NewUser\n\n**Name - [{m.from_user.first_name}](tg://user?id={m.from_user.id})**")
 
+    # Send a temporary loading message so the user knows the bot is working
+    loading_msg = await b.send_message(m.chat.id, "⏳ **Bot is Booting up... wait a sec**")
+
     sub_status = await check_user_sub(b, m.from_user.id)
     photo_file = await download_random_profile_image()
+
+    # Delete the loading message now that the image is ready
+    try:
+        await loading_msg.delete()
+    except Exception:
+        pass
 
     if sub_status == "not_joined":
         caption = f"{m.from_user.mention},\n\n<b><i>⚠️ Please join the updates channel to use this bot.</i></b>\n\n<i>Due to high traffic, access is limited to subscribers only 😊</i>"
