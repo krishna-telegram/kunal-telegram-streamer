@@ -931,7 +931,6 @@
       backdrop: true,
       playsInline: false,
       autoPlayback: true,
-      fastForward: true,
       theme: "#FF0000",
       whitelist: ["*"],
       moreVideoAttr: {
@@ -982,8 +981,7 @@
         },
       ],
       plugins: [
-        // Disabled AutoThumbnail plugin to fix seek bar lag and prevent Telegram FloodWaits
-        // artplayerPluginAutoThumbnail({}),
+        artplayerPluginAutoThumbnail({}),
         artplayerPluginAmbilight({
           blur: "50px",
           opacity: 0.8,
