@@ -8,6 +8,7 @@ class Database:
         self.db = self._client[database_name]
         self.col = self.db.users
         self.bannedList = self.db.bannedList
+        self.forwarded = self.db.forwarded_msgs
 
     def new_user(self, id):
         return dict(
@@ -65,3 +66,29 @@ class Database:
             e = f'Fᴀɪʟᴇᴅ ᴛᴏ ᴜɴʙᴀɴ.Rᴇᴀsᴏɴ : {e}'
             print(e)
             return e
+
+    async def save_forwarded(self, source_chat_id, source_msg_id, target_msg_id, media_type=None, file_name=None, file_hash=None, file_size=0, mime_type=None):
+        await self.forwarded.update_one(
+            {
+                'source_chat_id': int(source_chat_id),
+                'source_msg_id': int(source_msg_id)
+            },
+            {
+                '$set': {
+                    'target_msg_id': int(target_msg_id),
+                    'media_type': media_type,
+                    'file_name': file_name,
+                    'file_hash': file_hash,
+                    'file_size': int(file_size or 0),
+                    'mime_type': mime_type
+                }
+            },
+            upsert=True
+        )
+
+    async def get_forwarded(self, source_chat_id, source_msg_id):
+        doc = await self.forwarded.find_one({
+            'source_chat_id': int(source_chat_id),
+            'source_msg_id': int(source_msg_id)
+        })
+        return doc
