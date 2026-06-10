@@ -86,6 +86,7 @@ async def do_ban(bot, message):
     text = await message.reply("<b>Let me check 👀</b>")
     
     if await db.ban_user(userid):
+        logger.info(f"🔨 [ACTION] User {userid} was BANNED. Reason: {reason}")
         await text.edit(
             text=f"<b><code>{userid}</code> has been banned successfully\n\nShould I send an alert to the banned user?</b>",
             reply_markup=InlineKeyboardMarkup([
@@ -107,6 +108,7 @@ async def do_unban(bot, message):
     unban_chk = await db.is_unbanned(userid)
     
     if unban_chk is True:
+        logger.info(f"🕊️ [ACTION] User {userid} was UNBANNED.")
         await text.edit(
             text=f'<b><code>{userid}</code> is unbanned\nShould I send the happy news alert to the unbanned user?</b>',
             reply_markup=InlineKeyboardMarkup([
@@ -121,6 +123,7 @@ async def do_unban(bot, message):
 async def cb_handler(client, query):
     data = query.data
     if data == "close":
+        logger.info(f"🗑️ [ACTION] User {query.from_user.id} clicked 'Close'. Removed message.")
         return await query.message.delete()
         
     if data == "start":
@@ -139,11 +142,14 @@ async def cb_handler(client, query):
         reason = args[2]
         try:
             await client.send_message(user_id, f"<b>🚫 You are banned by [KUNAL](https://t.me/got_nirvana)\nReason: {reason}</b>")
+            logger.info(f"🔔 [ALERT] Ban alert sent to {user_id}")
             await query.message.edit(f"<b>✅ Alert sent to <code>{user_id}</code>\nReason: {reason}</b>")
         except Exception as e:
+            logger.error(f"❌ [ALERT FAILED] Could not send ban alert to {user_id}: {e}")
             await query.message.edit(f"<b>❌ Sorry, I got this error: {e}</b>")
 
     elif cmd == "noAlert":
+        logger.info(f"🔕 [SILENT] Ban on {user_id} executed silently.")
         await query.message.edit(f"<b>🤫 The ban on <code>{user_id}</code> was executed silently.</b>")
 
     elif cmd == "sendUnbanAlert":
@@ -152,9 +158,12 @@ async def cb_handler(client, query):
         try:
             unban_text = "<b>🎉 Hurray... You are unbanned by [KUNAL](https://t.me/got_nirvana)</b>"
             await client.send_message(user_id, unban_text)
+            logger.info(f"🔔 [ALERT] Unban alert sent to {user_id}")
             await query.message.edit(f"<b>✅ Unbanned Alert sent to <code>{user_id}</code>\nAlert text: {unban_text}</b>")
         except Exception as e:
+            logger.error(f"❌ [ALERT FAILED] Could not send unban alert to {user_id}: {e}")
             await query.message.edit(f"<b>❌ Sorry, I got this error: {e}</b>")
             
     elif cmd == "NoUnbanAlert":
+        logger.info(f"🔕 [SILENT] Unban on {user_id} executed silently.")
         await query.message.edit(f"<b>🤫 The unban on <code>{user_id}</code> was executed silently.</b>")
