@@ -99,16 +99,20 @@ async def add_buttons_handler(bot, message):
             try:
                 await bot.edit_message_reply_markup(original_message.chat.id, post_id, InlineKeyboardMarkup(markup))
                 success_count += 1
+                logger.info(f"🔘 [BULK ADD] Added buttons to {target_chat} / {post_id}")
             except MessageNotModified:
                 success_count += 1
+                logger.info(f"🔘 [BULK ADD SKIP] Buttons already matched on {target_chat} / {post_id}")
             except FloodWait as e:
+                logger.warning(f"⚠️ [FLOOD WAIT] Bulk Add sleeping for {e.value}s")
                 await asyncio.sleep(e.value)
                 await bot.edit_message_reply_markup(original_message.chat.id, post_id, InlineKeyboardMarkup(markup))
                 success_count += 1
+                logger.info(f"🔘 [BULK ADD] Added buttons to {target_chat} / {post_id} after delay")
             
             await asyncio.sleep(sleep_time)
         except Exception as e:
-            logger.error(f"Post {post_id} error: {e}")
+            logger.error(f"❌ [BULK ADD FAILED] Error on post {target_chat}/{post_id}: {e}")
             
     await status_msg.edit(f"✅ Updated {success_count}/{len(targets)} posts!")
 
@@ -155,16 +159,23 @@ async def remove_buttons_handler(bot, message):
                 
             await bot.edit_message_reply_markup(target_chat, post_id, None)
             success += 1
+            logger.info(f"🗑️ [BULK REMOVE] Removed buttons from {target_chat} / {post_id}")
         except (MessageNotModified, MessageIdInvalid):
             success += 1
+            logger.info(f"🗑️ [BULK REMOVE SKIP] Ignored {target_chat} / {post_id}")
         except FloodWait as e:
+            logger.warning(f"⚠️ [FLOOD WAIT] Bulk Remove sleeping for {e.value}s")
             await asyncio.sleep(e.value)
             try:
                 await bot.edit_message_reply_markup(target_chat, post_id, None)
                 success += 1
-            except: failed += 1
-        except Exception:
+                logger.info(f"🗑️ [BULK REMOVE] Removed buttons from {target_chat} / {post_id} after delay")
+            except Exception as e:
+                failed += 1
+                logger.error(f"❌ [BULK REMOVE FAILED] Error after flood wait on {target_chat}/{post_id}: {e}")
+        except Exception as e:
             failed += 1
+            logger.error(f"❌ [BULK REMOVE FAILED] Unexpected error on {target_chat}/{post_id}: {e}")
         await asyncio.sleep(sleep_time)
 
     await status.edit_text(f"✅ Done\nSuccess: {success}\nFailed: {failed}")
