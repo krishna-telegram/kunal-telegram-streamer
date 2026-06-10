@@ -10,6 +10,7 @@ from kunal.bot import StreamBot
 from kunal.vars import Var
 from kunal.utils.file_properties import get_name, get_hash, get_media_from_message
 from kunal.utils.helpers import get_shortlink
+from kunal.bot.plugins.stream import get_buttons
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,7 @@ async def add_buttons_handler(bot, message):
                 get_shortlink(f"{Var.URL}{log_msg.id}/{name_quoted}?hash={hash_val}")
             )
 
-            new_btns = [InlineKeyboardButton("🎬 Stream Now", url=stream_link), InlineKeyboardButton("⬇️ Download", url=download_link)]
+            new_btns = get_buttons(log_msg, stream_link, download_link)
             markup = [new_btns] if action == "replace" else (original_message.reply_markup.inline_keyboard if original_message.reply_markup else []) + [new_btns]
             
             if original_message.reply_markup:
