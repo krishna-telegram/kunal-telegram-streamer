@@ -29,7 +29,7 @@ async def add_buttons_handler(bot, message):
         return await bot.send_message(chat_id, "❌ Invalid input.")
         
     targets = []
-    range_match = re.match(r"https://t\.me/(?:c/(\d+)|([\w_]+))/(\d+)\s*to\s*(\d+)", text_input)
+    range_match = re.match(r"https://t\.me/(?:c/(\d+)|([\w_]+))/(\d+)\s*(?:to|-)\s*(?:https://t\.me/(?:c/\d+|[\w_]+)/)?(\d+)", text_input)
     single_match = re.match(r"https://t\.me/(?:c/(\d+)|([\w_]+))/(\d+)", text_input)
 
     if range_match:
@@ -123,11 +123,11 @@ async def remove_buttons_handler(bot, message):
     temp_msgs = [message]
     
     try:
-        ask_url = await message.reply_text("Send link or range:\n`https://t.me/channel/100`\n`https://t.me/channel/100 to 120`")
+        ask_url = await message.reply_text("Send link or range:\n`https://t.me/channel/100`\n`https://t.me/channel/100 to https://t.me/channel/120`")
         temp_msgs.extend([ask_url, await bot.listen(chat_id)])
         text = (temp_msgs[-1].text or "").strip()
         
-        match = re.search(r"(?:https://t\.me/)?(?:c/(\d+)|([\w_]+))/(\d+)(?:\s+to\s+(\d+))?", text)
+        match = re.search(r"(?:https://t\.me/)?(?:c/(\d+)|([\w_]+))/(\d+)(?:\s*(?:to|-)\s*(?:https://t\.me/(?:c/\d+|[\w_]+)/)?(\d+))?", text)
         if not match: raise ValueError("Invalid format")
 
         target_chat = int(f"-100{match.group(1)}") if match.group(1) else match.group(2)
