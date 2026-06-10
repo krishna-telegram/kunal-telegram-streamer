@@ -673,24 +673,13 @@
       opacity: 0;
       animation: loading-fade-in-delay 0.5s forwards;
     }
-
     @keyframes loading-fade-in-delay {
-
-      0%,
-      60% {
-        opacity: 0;
-      }
-
-      100% {
-        opacity: 1;
-      }
+      0%, 60% { opacity: 0; }
+      100% { opacity: 1; }
     }
-
     .art-loading .art-loading-icon {
-      display: none !important;
-      /* Hide default icon if any */
+      display: none !important; /* Hide default icon if any */
     }
-
     .netflix-loader {
       display: flex;
       flex-direction: column;
@@ -698,7 +687,6 @@
       justify-content: center;
       gap: 16px;
     }
-
     .netflix-loader .spinner {
       width: 55px;
       height: 55px;
@@ -708,7 +696,6 @@
       animation: netflix-spin 0.8s linear infinite;
       filter: drop-shadow(0 0 12px rgba(255, 0, 0, 0.75));
     }
-
     .netflix-loader .text {
       color: rgba(255, 255, 255, 0.9);
       font-size: 0.85rem;
@@ -719,25 +706,13 @@
       text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
       animation: pulse-text 1.2s ease-in-out infinite alternate;
     }
-
     @keyframes netflix-spin {
-      0% {
-        transform: rotate(0deg);
-      }
-
-      100% {
-        transform: rotate(360deg);
-      }
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
-
     @keyframes pulse-text {
-      0% {
-        opacity: 0.5;
-      }
-
-      100% {
-        opacity: 1;
-      }
+      0% { opacity: 0.5; }
+      100% { opacity: 1; }
     }
   </style>
 </head>
