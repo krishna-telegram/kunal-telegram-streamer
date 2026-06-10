@@ -11,6 +11,17 @@ from kunal.vars import Var
 from kunal.utils.file_properties import get_name, get_hash, get_media_file_size
 from kunal.utils.helpers import get_shortlink, humanbytes
 
+def get_buttons(log_msg, stream_link, download_link):
+    if getattr(log_msg, "video", None) or getattr(log_msg, "audio", None):
+        return [InlineKeyboardButton("🎬 Stream Now", url=stream_link), InlineKeyboardButton("⬇️ Download", url=download_link)]
+    elif getattr(log_msg, "document", None):
+        mime = log_msg.document.mime_type or ""
+        name = log_msg.document.file_name or ""
+        if mime == "application/pdf" or name.lower().endswith(".pdf"):
+            return [InlineKeyboardButton("📖 Open PDF", url=stream_link), InlineKeyboardButton("⬇️ Download", url=download_link)]
+    
+    return [InlineKeyboardButton("⬇️ Download", url=download_link)]
+
 # --- Standard Logging Setup for Heroku (No Colors) ---
 logging.basicConfig(
     level=logging.INFO,
@@ -89,7 +100,7 @@ async def private_receive_handler(c: Client, m: Message):
             text=msg_text.format(get_name(log_msg), humanbytes(get_media_file_size(m))),
             quote=True,
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🎬 Stream Now", url=stream_link), InlineKeyboardButton("⬇️ Download", url=download_link)]
+                get_buttons(log_msg, stream_link, download_link)
             ])
         )
         logger.info(f"✅ Successfully generated links for user {m.from_user.id}")
@@ -131,10 +142,9 @@ async def channel_receive_handler(bot, broadcast):
         except Exception as e:
             logger.error(f"❌ Shortlink generation failed in channel handler: {e}")
 
-    markup = InlineKeyboardMarkup([[
-        InlineKeyboardButton("🎬 Stream Now", url=stream_link), 
-        InlineKeyboardButton("⬇️ Download", url=download_link)
-    ]])
+    markup = InlineKeyboardMarkup([
+        get_buttons(log_msg, stream_link, download_link)
+    ])
 
     for attempt in range(3):
         try:
