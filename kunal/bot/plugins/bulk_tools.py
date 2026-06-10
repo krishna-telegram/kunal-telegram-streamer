@@ -8,11 +8,14 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from kunal.bot import StreamBot
 from kunal.vars import Var
-from kunal.utils.file_properties import get_name, get_hash, get_media_from_message
+from kunal.utils.file_properties import get_name, get_hash, get_media_from_message, create_mock_message
 from kunal.utils.helpers import get_shortlink
 from kunal.bot.plugins.stream import get_buttons
+from kunal.utils.database import Database
 
 logger = logging.getLogger(__name__)
+
+db = Database(Var.DATABASE_URL, Var.name)
 
 CANCEL_TASKS = {}
 
@@ -89,16 +92,93 @@ async def add_buttons_handler(bot, message):
             if not original_message or original_message.empty or not get_media_from_message(original_message):
                 continue
 
-            try:
-                log_msg = await original_message.copy(chat_id=Var.BIN_CHANNEL, reply_markup=None)
-            except Exception:
-                media = get_media_from_message(original_message)
-                if getattr(original_message, "video", None):
-                    log_msg = await bot.send_video(Var.BIN_CHANNEL, media.file_id, caption=original_message.caption or "")
-                elif getattr(original_message, "photo", None):
-                    log_msg = await bot.send_photo(Var.BIN_CHANNEL, media.file_id, caption=original_message.caption or "")
+            # Check if this message was already forwarded to BIN_CHANNEL
+            forward_data = await db.get_forwarded(target_chat, post_id)
+            log_msg = None
+            if forward_data:
+                target_msg_id = forward_data.get('target_msg_id')
+                media_type = forward_data.get('media_type')
+                file_name = forward_data.get('file_name')
+                file_hash = forward_data.get('file_hash')
+                file_size = forward_data.get('file_size', 0)
+                mime_type = forward_data.get('mime_type')
+                
+                if media_type and file_name and file_hash:
+                    logger.info(f"⚡ [CACHE HIT] Found message {target_chat}/{post_id} in Database. Skipping Telegram fetch.")
+                    log_msg = create_mock_message(target_msg_id, media_type, file_name, file_hash, file_size, mime_type)
                 else:
-                    log_msg = await bot.send_document(Var.BIN_CHANNEL, media.file_id, caption=original_message.caption or "")
+                    try:
+                        logger.info(f"⏳ [CACHE HIT - OLD RECORD] Found target_msg_id={target_msg_id} for {target_chat}/{post_id}. Fetching from Telegram to update cache...")
+                        log_msg = await bot.get_messages(chat_id=Var.BIN_CHANNEL, message_ids=target_msg_id)
+                        if getattr(log_msg, "empty", False):
+                            log_msg = None
+                        else:
+                            # Update old cache with metadata
+                            media = get_media_from_message(log_msg)
+                            media_type = None
+                            for attr in ("audio", "document", "photo", "sticker", "animation", "video", "voice", "video_note"):
+                                if getattr(log_msg, attr, None):
+                                    media_type = attr
+                                    break
+                            
+                            file_name = getattr(media, "file_name", "")
+                            file_hash = getattr(media, "file_unique_id", "")[:6]
+                            file_size = getattr(media, "file_size", 0)
+                            mime_type = getattr(media, "mime_type", "")
+                            
+                            await db.save_forwarded(
+                                source_chat_id=target_chat,
+                                source_msg_id=post_id,
+                                target_msg_id=log_msg.id,
+                                media_type=media_type,
+                                file_name=file_name,
+                                file_hash=file_hash,
+                                file_size=file_size,
+                                mime_type=mime_type
+                            )
+                    except Exception:
+                        log_msg = None
+            
+            if not log_msg:
+                logger.info(f"📤 [FORWARD] Message {target_chat}/{post_id} not cached. Forwarding to BIN_CHANNEL...")
+                try:
+                    log_msg = await original_message.copy(chat_id=Var.BIN_CHANNEL, reply_markup=None)
+                except Exception:
+                    media = get_media_from_message(original_message)
+                    if getattr(original_message, "video", None):
+                        log_msg = await bot.send_video(Var.BIN_CHANNEL, media.file_id, caption=original_message.caption or "")
+                    elif getattr(original_message, "photo", None):
+                        log_msg = await bot.send_photo(Var.BIN_CHANNEL, media.file_id, caption=original_message.caption or "")
+                    else:
+                        log_msg = await bot.send_document(Var.BIN_CHANNEL, media.file_id, caption=original_message.caption or "")
+                
+                if log_msg and not getattr(log_msg, "empty", False):
+                    media = get_media_from_message(log_msg)
+                    media_type = None
+                    for attr in ("audio", "document", "photo", "sticker", "animation", "video", "voice", "video_note"):
+                        if getattr(log_msg, attr, None):
+                            media_type = attr
+                            break
+                    
+                    file_name = getattr(media, "file_name", "")
+                    file_hash = getattr(media, "file_unique_id", "")[:6]
+                    file_size = getattr(media, "file_size", 0)
+                    mime_type = getattr(media, "mime_type", "")
+                    
+                    await db.save_forwarded(
+                        source_chat_id=target_chat,
+                        source_msg_id=post_id,
+                        target_msg_id=log_msg.id,
+                        media_type=media_type,
+                        file_name=file_name,
+                        file_hash=file_hash,
+                        file_size=file_size,
+                        mime_type=mime_type
+                    )
+            
+            if not log_msg or getattr(log_msg, "empty", False):
+                logger.error(f"❌ [BULK ADD FAILED] Could not forward/retrieve message {target_chat}/{post_id}")
+                continue
             
             name_quoted, hash_val = quote_plus(get_name(log_msg)), get_hash(log_msg)
             stream_link, download_link = await asyncio.gather(
