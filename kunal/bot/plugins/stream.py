@@ -153,14 +153,14 @@ async def channel_receive_handler(bot, broadcast):
                 ),
                 quote=True
             )
-            logger.info(f"✅ Successfully appended streaming buttons in channel {chat_id}")
+            logger.info(f"🔘 [BUTTONS] Successfully attached 'Stream' & 'Download' buttons to video in channel {chat_id}")
             break
             
         except FloodWait as w:
-            logger.warning(f"⚠️ FloodWait in channel {chat_id}. Retrying in {w.value}s (Attempt {attempt + 1}/3)")
+            logger.warning(f"⚠️ [FLOOD] FloodWait in channel {chat_id}. Retrying in {w.value}s (Attempt {attempt + 1}/3)")
             await asyncio.sleep(w.value + 1)
             if attempt == 2:
-                logger.error(f"❌ FloodWait exhausted for channel {chat_id}. Aborting button attachment.")
+                logger.error(f"❌ [FLOOD] FloodWait exhausted for channel {chat_id}. Aborting button attachment.")
                 await bot.send_message(
                     chat_id=Var.BIN_CHANNEL, 
                     text=f"> 🚨 **FloodWait Failed after retries**\n\n📡 From Channel: `{broadcast.chat.title}`\n🆔 Channel ID: `{chat_id}`", 
