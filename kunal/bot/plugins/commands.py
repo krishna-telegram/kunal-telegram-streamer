@@ -183,3 +183,53 @@ async def cb_handler(client, query):
     elif cmd == "NoUnbanAlert":
         logger.info(f"🔕 [SILENT] Unban on {user_id} executed silently.")
         await query.message.edit(f"<b>🤫 The unban on <code>{user_id}</code> was executed silently.</b>")
+
+
+@StreamBot.on_chat_member_updated()
+async def bot_admin_added_handler(bot, event):
+    new_member = event.new_chat_member
+    if not new_member:
+        return
+        
+    user = new_member.user
+    if not user or not user.is_self:
+        return
+
+    from pyrogram.enums import ChatMemberStatus, ChatType
+    status = new_member.status
+    old_status = event.old_chat_member.status if event.old_chat_member else None
+    
+    if status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]:
+        if old_status not in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER]:
+            chat = event.chat
+            invite_link = None
+            if chat.username:
+                invite_link = f"https://t.me/{chat.username}"
+            else:
+                try:
+                    invite_link = chat.invite_link or await bot.export_chat_invite_link(chat.id)
+                except Exception as e:
+                    logger.warning(f"Could not export invite link for {chat.title}: {e}")
+                    invite_link = "No permission to create invite link"
+            
+            promoter = f"[{event.from_user.first_name}](tg://user?id={event.from_user.id})" if event.from_user else "Unknown"
+            chat_type_str = "Channel" if chat.type == ChatType.CHANNEL else "Group"
+            
+            msg_text = (
+                f"🤖 **Bot Added to {chat_type_str} as Admin!**\n\n"
+                f"📌 **{chat_type_str} Name:** `{chat.title}`\n"
+                f"🆔 **{chat_type_str} ID:** `{chat.id}`\n"
+                f"🔗 **Invite Link:** {invite_link}\n"
+                f"👤 **Promoted By:** {promoter}"
+            )
+            
+            log_channel = -1003913158636
+            try:
+                await bot.send_message(
+                    chat_id=log_channel,
+                    text=msg_text,
+                    disable_web_page_preview=False
+                )
+            except Exception as log_err:
+                logger.warning(f"Could not send bot admin log: {log_err}")
+
