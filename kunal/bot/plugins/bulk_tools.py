@@ -14,10 +14,22 @@ from kunal.bot.plugins.stream import get_buttons
 
 logger = logging.getLogger(__name__)
 
+CANCEL_TASKS = {}
+
+@StreamBot.on_message(filters.command("cancel") & (filters.channel | filters.group | filters.private), group=-1)
+async def cancel_task_handler(bot, message):
+    chat_id = message.chat.id
+    if CANCEL_TASKS.get(chat_id, False) is False:
+        CANCEL_TASKS[chat_id] = True
+        await message.reply_text("🛑 **Cancellation requested.** The current operation will stop shortly.")
+    else:
+        await message.reply_text("There are no active operations to cancel in this chat.")
+
 @StreamBot.on_message(filters.command("addbuttons") & (filters.channel | filters.group), group=-1)
 async def add_buttons_handler(bot, message):
     chat_id = message.chat.id
     temp_msgs = [message]
+    CANCEL_TASKS[chat_id] = False
     
     ask_url = await message.reply_text("Send URL(s):\nSingle: `https://t.me/username/123`\nRange: `https://t.me/username/123 to 150`")
     temp_msgs.extend([ask_url, await bot.listen(chat_id)])
@@ -68,6 +80,10 @@ async def add_buttons_handler(bot, message):
     success_count = 0
 
     for target_chat, post_id in targets:
+        if CANCEL_TASKS.get(chat_id):
+            await bot.send_message(chat_id, "🛑 **Operation Cancelled by User.**")
+            break
+            
         try:
             original_message = await bot.get_messages(chat_id=target_chat, message_ids=post_id)
             if not original_message or original_message.empty or not get_media_from_message(original_message):
@@ -116,12 +132,14 @@ async def add_buttons_handler(bot, message):
             logger.error(f"❌ [BULK ADD FAILED] Error on post {target_chat}/{post_id}: {e}")
             
     await status_msg.edit(f"✅ Updated {success_count}/{len(targets)} posts!")
+    CANCEL_TASKS[chat_id] = False
 
 
 @StreamBot.on_message(filters.command("removebuttons") & (filters.channel | filters.group), group=-1)
 async def remove_buttons_handler(bot, message):
     chat_id = message.chat.id
     temp_msgs = [message]
+    CANCEL_TASKS[chat_id] = False
     
     try:
         ask_url = await message.reply_text("Send link or range:\n`https://t.me/channel/100`\n`https://t.me/channel/100 to https://t.me/channel/120`")
@@ -151,6 +169,10 @@ async def remove_buttons_handler(bot, message):
     success, failed = 0, 0
 
     for post_id in range(start_id, end_id + 1):
+        if CANCEL_TASKS.get(chat_id):
+            await bot.send_message(chat_id, "🛑 **Operation Cancelled by User.**")
+            break
+            
         try:
             msg = await bot.get_messages(target_chat, post_id)
             if not msg:
@@ -180,3 +202,4 @@ async def remove_buttons_handler(bot, message):
         await asyncio.sleep(sleep_time)
 
     await status.edit_text(f"✅ Done\nSuccess: {success}\nFailed: {failed}")
+    CANCEL_TASKS[chat_id] = False
