@@ -96,7 +96,7 @@ async def stream_handler(request: web.Request):
     except FIleNotFound as e:
         raise web.HTTPNotFound(text=e.message)
     except (AttributeError, BadStatusLine, ConnectionResetError):
-        pass
+        return web.Response(status=400, text="Bad Request or Connection Reset")
     except Exception as e:
         logging.critical(e.with_traceback(None))
         raise web.HTTPInternalServerError(text=str(e))
@@ -108,64 +108,26 @@ async def media_streamer(request: web.Request, id: int, secure_hash: str):
     
     index = min(work_loads, key=work_loads.get)
     faster_client = multi_clients[index]
+    
+    if Var.MULTI_CLIENT:
+        logging.info(f"Client {index} is now serving {request.remote}")
 
     if faster_client in class_cache:
         tg_connect = class_cache[faster_client]
+        logging.debug(f"Using cached ByteStreamer object for client {index}")
     else:
+        logging.debug(f"Creating new ByteStreamer object for client {index}")
         tg_connect = ByteStreamer(faster_client)
         class_cache[faster_client] = tg_connect
-
+    logging.debug("before calling get_file_properties")
     file_id = await tg_connect.get_file_properties(id)
+    logging.debug("after calling get_file_properties")
     
     if file_id.unique_id[:6] != secure_hash:
+        logging.debug(f"Invalid hash for message with ID {id}")
         raise InvalidHash
     
     file_size = file_id.file_size
-    file_name = file_id.file_name or "Unknown_Media"
-
-    # =========================================================================
-    # PRODUCTION LEVEL METRIC LOGGING (Captures initial plays & seeking tracks)
-    # =========================================================================
-    if not range_header or range_header == "bytes=0-":
-        playback_action = "▶️ PLAYING"
-    else:
-        try:
-            start_byte = int(range_header.replace("bytes=", "").split("-")[0])
-            ratio = start_byte / file_size if file_size > 0 else 0
-            playback_action = f"⏩ SEEK/RESUME ({round(ratio * 100)}%)"
-        except Exception:
-            playback_action = "▶️ PLAYING"
-
-    # Only output logs during structural client connection initializations or seek triggers
-    if not range_header or (range_header and "0-" in range_header) or "SEEK" in playback_action:
-        viewer_ip = request.headers.get('X-Forwarded-For', request.remote)
-        if viewer_ip and ',' in viewer_ip:
-            viewer_ip = viewer_ip.split(',')[0].strip()
-
-        size_mb = round(file_size / (1024 * 1024), 2)
-
-        user_agent = request.headers.get('User-Agent', 'Unknown')
-        if any(mobile in user_agent for mobile in ["Mobile", "Android", "iPhone", "iPad"]):
-            device = "📱 Mobile"
-        else:
-            device = "💻 Desktop"
-
-        referer = request.headers.get('Referer', 'Direct Link')
-        if "telegram" in referer.lower() or "t.me" in referer.lower():
-            source = "Telegram"
-        else:
-            source = referer.split('//')[-1].split('/')[0] if '//' in referer else referer
-
-        current_load = work_loads.get(index, 0)
-
-        logging.info(
-            f"{playback_action}: {file_name} ({size_mb} MB) | "
-            f"IP: {viewer_ip} | "
-            f"Device: {device} | "
-            f"Source: {source} | "
-            f"Bot ID: {index} (Active Loads: {current_load})"
-        )
-    # =========================================================================
 
     if range_header:
         from_bytes, until_bytes = range_header.replace("bytes=", "").split("-")
@@ -196,24 +158,25 @@ async def media_streamer(request: web.Request, id: int, secure_hash: str):
     )
 
     mime_type = file_id.mime_type
+    file_name = file_id.file_name
     disposition = "attachment"
 
     if mime_type:
-        if not file_name or file_name == "Unknown_Media":
+        if not file_name:
             try:
                 file_name = f"{secrets.token_hex(2)}.{mime_type.split('/')[1]}"
             except (IndexError, AttributeError):
                 file_name = f"{secrets.token_hex(2)}.unknown"
     else:
-        if file_name and file_name != "Unknown_Media":
-            mime_type = mimetypes.guess_type(file_name)
+        if file_name:
+            mime_type = mimetypes.guess_type(file_id.file_name)
         else:
             mime_type = "application/octet-stream"
             file_name = f"{secrets.token_hex(2)}.unknown"
 
     return web.Response(
         status=206 if range_header else 200,
-        body=body,
+        body=body if request.method != "HEAD" else None,
         headers={
             "Content-Type": f"{mime_type}",
             "Content-Range": f"bytes {from_bytes}-{until_bytes}/{file_size}",
