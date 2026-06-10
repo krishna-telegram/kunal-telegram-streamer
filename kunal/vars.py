@@ -56,7 +56,7 @@ class Var:
     if _APP_NAME and ON_HEROKU:
         URL = f"https://{_APP_NAME}.herokuapp.com/"
     else:
-        URL = getenv('URL', "http://127.0.0.1:8081/")
+        URL = getenv('URL', "http://127.0.0.1:8080/")
         
     if not URL.endswith("/"):
         URL += "/"
@@ -71,7 +71,7 @@ class Var:
     BANNED_CHANNELS = list(set(int(x) for x in str(getenv("BANNED_CHANNELS", "")).split()))
     BAN_CHNL = list(set(int(x) for x in str(getenv("BAN_CHNL", "")).split()))
     BAN_ALERT = str(getenv('BAN_ALERT', '<b>ʏᴏᴜʀ ᴀʀᴇ ʙᴀɴɴᴇᴅ ᴛᴏ ᴜsᴇ ᴛʜɪs ʙᴏᴛ. ᴄᴏɴᴛᴀᴄᴛ @got_nirvana ᴛᴏ ʀᴇsᴏʟᴠᴇ ᴛʜᴇ ɪssᴜᴇ!!</b>'))
-    print(f"🚫 Banned channels: {BANNED_CHANNELS}\n❗ Ban alert message: {BAN_ALERT}")
+
 
     SHORTLINK = is_enabled(getenv('SHORTLINK', 'False'), False)
     SHORTLINK_URL = getenv('SHORTLINK_URL', '')
