@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: kunal-tg-streamer
+    env: python
+    region: frankfurt
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python3 -m kunal"
+    envVars:
+      - key: API_ID
+        sync: false
+      - key: API_HASH
+        sync: false
+      - key: BOT_TOKEN
+        sync: false
+      - key: BIN_CHANNEL
+        sync: false
+      - key: NEW_USER_LOG
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: OWNER_ID
+        sync: false
+      - key: OWNER_USERNAME
+        sync: false
+      - key: UPDATES_CHANNEL
+        value: "None"
+      - key: ON_HEROKU
+        value: "True"
+      - key: URL
+        sync: false

@@ -1,0 +1,1153 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zenith Streamer | {{ file_name }}</title>
+
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/artplayer/dist/artplayer.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/artplayer-plugin-auto-thumbnail/dist/artplayer-plugin-auto-thumbnail.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/artplayer-plugin-ambilight/dist/artplayer-plugin-ambilight.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/artplayer-plugin-asr/dist/artplayer-plugin-asr.js"></script>
+
+    <style>
+      :root {
+        /* Dark Theme (VisionOS Default) */
+        --bg-base: #000000;
+        --text-primary: rgba(255, 255, 255, 0.95);
+        --text-secondary: rgba(255, 255, 255, 0.55);
+
+        /* Glass Tokens */
+        --glass-bg: rgba(30, 30, 32, 0.45);
+        --glass-border: rgba(255, 255, 255, 0.08);
+        --glass-highlight: rgba(255, 255, 255, 0.12);
+        --glass-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.6);
+        --glass-blur: blur(40px);
+
+        /* Button Tokens */
+        --btn-bg: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.12) 0%,
+          rgba(255, 255, 255, 0.04) 100%
+        );
+        --btn-border: rgba(255, 255, 255, 0.1);
+        --btn-hover-bg: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.18) 0%,
+          rgba(255, 255, 255, 0.08) 100%
+        );
+
+        /* Accents */
+        --accent-glow: radial-gradient(
+          circle at 50% 0%,
+          rgba(0, 122, 255, 0.15),
+          transparent 60%
+        );
+        --accent-color: #0a84ff;
+
+        /* Radii */
+        --radius-lg: 28px;
+        --radius-md: 16px;
+        --radius-sm: 12px;
+      }
+
+      body.light {
+        --bg-base: #f5f5f7;
+        --text-primary: rgba(0, 0, 0, 0.9);
+        --text-secondary: rgba(0, 0, 0, 0.5);
+
+        --glass-bg: rgba(255, 255, 255, 0.6);
+        --glass-border: rgba(0, 0, 0, 0.05);
+        --glass-highlight: rgba(255, 255, 255, 0.8);
+        --glass-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.1);
+
+        --btn-bg: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.9) 0%,
+          rgba(255, 255, 255, 0.5) 100%
+        );
+        --btn-border: rgba(0, 0, 0, 0.08);
+        --btn-hover-bg: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 1) 0%,
+          rgba(255, 255, 255, 0.8) 100%
+        );
+
+        --accent-glow: radial-gradient(
+          circle at 50% 0%,
+          rgba(0, 122, 255, 0.05),
+          transparent 70%
+        );
+        --accent-color: #007aff;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background-color: var(--bg-base);
+        color: var(--text-primary);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Display",
+          "Segoe UI", sans-serif;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 100px 20px 40px;
+        transition:
+          background-color 0.5s ease,
+          color 0.5s ease;
+        -webkit-font-smoothing: antialiased;
+        overflow-x: hidden;
+        position: relative;
+      }
+
+      .ambient-bg {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: -1;
+        pointer-events: none;
+        background: var(--accent-glow);
+        transition: all 0.8s ease;
+      }
+
+      .ambient-orb {
+        position: absolute;
+        width: 50vw;
+        height: 50vw;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          rgba(10, 132, 255, 0.08) 0%,
+          transparent 70%
+        );
+        top: -10%;
+        right: -10%;
+        filter: blur(60px);
+        animation: pulse 12s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+      }
+
+      @keyframes pulse {
+        0% {
+          transform: scale(1) translate(0, 0);
+          opacity: 0.5;
+        }
+        100% {
+          transform: scale(1.1) translate(-5%, 5%);
+          opacity: 1;
+        }
+      }
+
+      .glass-nav {
+        position: fixed;
+        top: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--glass-bg);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border: 1px solid var(--glass-border);
+        border-radius: 100px;
+        padding: 12px 24px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        z-index: 50;
+        box-shadow:
+          inset 0 1px 0 0 var(--glass-highlight),
+          var(--glass-shadow);
+      }
+
+      .brand-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+
+      .theme-toggle {
+        background: none;
+        border: none;
+        color: var(--text-primary);
+        cursor: pointer;
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px;
+        border-radius: 50%;
+        transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+      }
+
+      .theme-toggle:hover {
+        transform: scale(1.15) rotate(15deg);
+      }
+
+      .glass-card {
+        background: var(--glass-bg);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-lg);
+        padding: 32px;
+        width: 100%;
+        max-width: 1080px;
+        box-shadow:
+          inset 0 1px 0 0 var(--glass-highlight),
+          var(--glass-shadow);
+        display: flex;
+        flex-direction: column;
+        z-index: 10;
+        transition:
+          transform 0.4s cubic-bezier(0.25, 1, 0.5, 1),
+          box-shadow 0.4s ease;
+      }
+
+      .video-wrapper {
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        border-radius: var(--radius-md);
+        background: #000;
+        margin-bottom: 32px;
+        position: relative;
+        z-index: 2;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+      }
+
+      .artplayer-app {
+        width: 100%;
+        height: 100%;
+        border-radius: var(--radius-md);
+      }
+
+      .meta-grid {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 24px;
+        align-items: center;
+        margin-bottom: 32px;
+        padding: 0 12px;
+      }
+
+      .meta-info {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .meta-label {
+        font-size: 0.8rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      /* Network Pill Metrics */
+      .network-status {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 2px 8px;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid var(--glass-border);
+        color: var(--text-secondary);
+        text-transform: none;
+        letter-spacing: 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.3s ease;
+      }
+
+      body.light .network-status {
+        background: rgba(0, 0, 0, 0.04);
+      }
+
+      .network-status::before {
+        content: "";
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: #34c759;
+      }
+
+      .network-status.buffering::before {
+        background: #ff9500;
+      }
+
+      .meta-value {
+        font-size: 1.4rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        line-height: 1.2;
+      }
+
+      .badge-container {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .meta-badge {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        padding: 8px 16px;
+        border-radius: 100px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        box-shadow: inset 0 1px 0 0 var(--glass-highlight);
+      }
+
+      .actions-row {
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+        width: 100%;
+      }
+
+      .btn {
+        background: var(--btn-bg);
+        border: 1px solid var(--btn-border);
+        color: var(--text-primary);
+        padding: 14px 28px;
+        font-size: 1rem;
+        font-weight: 500;
+        border-radius: 100px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        box-shadow:
+          0 4px 12px rgba(0, 0, 0, 0.1),
+          inset 0 1px 0 0 var(--glass-highlight);
+        flex: 1;
+        min-width: max-content;
+      }
+
+      .btn:hover {
+        transform: scale(1.02) translateY(-1px);
+        background: var(--btn-hover-bg);
+        box-shadow:
+          0 8px 24px rgba(0, 0, 0, 0.15),
+          inset 0 1px 0 0 var(--glass-highlight);
+      }
+
+      .btn:active {
+        transform: scale(0.98);
+      }
+
+      .btn.primary {
+        background: var(--accent-color);
+        color: #fff;
+        border: none;
+        box-shadow:
+          0 4px 16px rgba(10, 132, 255, 0.4),
+          inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
+      }
+
+      .btn.primary:hover {
+        background: #1e90ff;
+        box-shadow:
+          0 8px 24px rgba(10, 132, 255, 0.5),
+          inset 0 1px 0 0 rgba(255, 255, 255, 0.3);
+      }
+
+      /* Shortcuts Guide / Help Modal Overlay */
+      .shortcuts-panel {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        background: var(--glass-bg);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-md);
+        padding: 24px;
+        max-width: 320px;
+        box-shadow:
+          var(--glass-shadow),
+          inset 0 1px 0 0 var(--glass-highlight);
+        z-index: 40;
+        opacity: 0;
+        transform: translateY(15px) scale(0.95);
+        pointer-events: none;
+        transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+      }
+
+      .shortcuts-panel.show {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        pointer-events: auto;
+      }
+
+      .shortcuts-header {
+        font-weight: 600;
+        font-size: 1rem;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .shortcuts-close {
+        background: none;
+        border: none;
+        color: var(--text-secondary);
+        cursor: pointer;
+        font-size: 1rem;
+      }
+
+      .shortcut-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        font-size: 0.85rem;
+      }
+
+      .shortcut-key {
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px solid var(--glass-border);
+        padding: 2px 8px;
+        border-radius: 6px;
+        font-family: monospace;
+        font-weight: 600;
+      }
+
+      body.light .shortcut-key {
+        background: rgba(0, 0, 0, 0.06);
+      }
+
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.4s ease;
+        z-index: 100;
+      }
+
+      .modal-overlay.show {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .modal-content {
+        background: var(--glass-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: var(--radius-lg);
+        padding: 40px;
+        max-width: 420px;
+        width: 90%;
+        text-align: center;
+        box-shadow:
+          var(--glass-shadow),
+          inset 0 1px 0 0 var(--glass-highlight);
+        transform: scale(0.95) translateY(10px);
+        transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+
+      .modal-overlay.show .modal-content {
+        transform: scale(1) translateY(0);
+      }
+
+      .modal-icon {
+        font-size: 3rem;
+        margin-bottom: 16px;
+      }
+
+      .modal-title {
+        font-size: 1.4rem;
+        font-weight: 600;
+        margin-bottom: 12px;
+        letter-spacing: -0.02em;
+      }
+
+      .modal-desc {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+        line-height: 1.5;
+        margin-bottom: 28px;
+      }
+
+      .toast {
+        position: fixed;
+        bottom: 40px;
+        left: 50%;
+        transform: translate(-50%, 20px) scale(0.95);
+        background: var(--glass-bg);
+        backdrop-filter: var(--glass-blur);
+        -webkit-backdrop-filter: var(--glass-blur);
+        color: var(--text-primary);
+        border: 1px solid var(--glass-border);
+        padding: 14px 28px;
+        border-radius: 100px;
+        font-weight: 500;
+        box-shadow:
+          var(--glass-shadow),
+          inset 0 1px 0 0 var(--glass-highlight);
+        opacity: 0;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        z-index: 100;
+        pointer-events: none;
+      }
+
+      .toast.show {
+        opacity: 1;
+        transform: translate(-50%, 0) scale(1);
+      }
+
+      /* =========================================
+         NEW OPTIMIZED MOBILE UI (No-Lag version)
+         ========================================= */
+      @media (max-width: 768px) {
+        /* 1. Kill the Lag: Disable heavy blurs and animations for mobile GPUs */
+        .ambient-orb {
+          display: none !important;
+        }
+        .ambient-bg {
+          background: var(--bg-base); /* Solid fallback */
+        }
+
+        /* 2. Remove Glassmorphism on Mobile for Performance */
+        .glass-card,
+        .glass-nav,
+        .shortcuts-panel,
+        .modal-content,
+        .toast {
+          backdrop-filter: none !important;
+          -webkit-backdrop-filter: none !important;
+          background: #151517 !important; /* Solid dark background */
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+          border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Support Light Mode on Mobile Solid Fallback */
+        body.light .glass-card,
+        body.light .glass-nav,
+        body.light .shortcuts-panel,
+        body.light .modal-content,
+        body.light .toast {
+          background: #ffffff !important;
+          border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        /* 3. Optimize Layout Spacing */
+        body {
+          padding: 80px 12px 20px;
+        }
+        .glass-nav {
+          padding: 10px 16px;
+          width: 92%;
+          gap: 12px;
+        }
+        .brand-title {
+          font-size: 0.95rem;
+        }
+        .theme-toggle {
+          padding: 4px;
+        }
+        .glass-card {
+          padding: 16px;
+          border-radius: 20px;
+        }
+
+        /* 4. Fix Video Player Scaling */
+        .video-wrapper {
+          margin-bottom: 20px;
+          border-radius: 12px;
+          box-shadow: none; /* Remove heavy shadow */
+        }
+
+        /* 5. Fix Text & Pill Overlaps */
+        .meta-grid {
+          grid-template-columns: 1fr;
+          gap: 14px;
+          margin-bottom: 20px;
+          padding: 0 4px;
+        }
+        .meta-value {
+          font-size: 1.15rem;
+          word-break: break-word; /* Prevent long names from breaking layout */
+          line-height: 1.3;
+        }
+        .meta-label {
+          font-size: 0.75rem;
+          flex-wrap: wrap; /* Allows network pill to drop to next line if needed */
+        }
+        .badge-container {
+          flex-wrap: wrap;
+        }
+        .meta-badge {
+          font-size: 0.8rem;
+          padding: 6px 14px;
+        }
+
+        /* 6. Fix Button Overlap & Sizing */
+        .actions-row {
+          flex-direction: column;
+          gap: 10px;
+        }
+        .btn {
+          width: 100%;
+          padding: 12px 16px; /* Reduced vertical padding */
+          font-size: 0.95rem; /* Better scaled font */
+          border-radius: 14px;
+          min-width: auto; /* Prevents button from bleeding off screen */
+          justify-content: center;
+        }
+        .btn svg {
+          width: 16px;
+          height: 16px;
+        }
+
+        /* 7. Optimize Modals for small screens */
+        .shortcuts-panel {
+          bottom: 12px;
+          right: 12px;
+          left: 12px;
+          padding: 16px;
+          max-width: none;
+        }
+        .modal-content {
+          padding: 24px 20px;
+          width: 92%;
+        }
+        .modal-title {
+          font-size: 1.2rem;
+        }
+        .modal-desc {
+          font-size: 0.9rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="ambient-bg"></div>
+    <div class="ambient-orb"></div>
+
+    <nav class="glass-nav">
+      <div class="brand-title">ZENITH STREAMER</div>
+      <button
+        class="theme-toggle"
+        onclick="toggleTheme()"
+        aria-label="Toggle Theme"
+      >
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+      </button>
+    </nav>
+
+    <main class="glass-card">
+      <div class="video-wrapper">
+        <div id="zenith-player" class="artplayer-app"></div>
+      </div>
+
+      <div class="meta-grid">
+        <div class="meta-info">
+          <div class="meta-label">
+            <span id="network-pill" class="network-status"
+              >Analyzing Stream Health...</span
+            >
+          </div>
+          <h1 class="meta-value">{{ file_name }}</h1>
+        </div>
+        <div class="badge-container">
+          <div class="meta-badge">{{ file_size }}</div>
+        </div>
+      </div>
+
+      <div class="actions-row">
+        <button class="btn primary" onclick="handleDownload()">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          Download Source
+        </button>
+        <button class="btn" onclick="copyPageLink()">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
+            ></path>
+            <path
+              d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
+            ></path>
+          </svg>
+          Share Link
+        </button>
+        <a
+          href="https://t.me/+0xkq3yOzYH00ZWI1"
+          class="btn"
+          target="_blank"
+          onclick="markAsJoined()"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M22 2L11 13"></path>
+            <path d="M22 2L15 22L11 13L2 9L22 2Z"></path>
+          </svg>
+          Join Channel
+        </a>
+      </div>
+    </main>
+
+    <div id="shortcuts-panel" class="shortcuts-panel">
+      <div class="shortcuts-header">
+        <span>Cinema Controls</span>
+        <button class="shortcuts-close" onclick="toggleShortcuts()">✕</button>
+      </div>
+      <div class="shortcut-row">
+        <span>Play / Pause</span><span class="shortcut-key">Space</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Seek Forward / Back</span><span class="shortcut-key">← / →</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Volume Tuning</span><span class="shortcut-key">↑ / ↓</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Toggle Fullscreen</span><span class="shortcut-key">F</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Skip Segments</span><span class="shortcut-key">1 - 9</span>
+      </div>
+      <div class="shortcut-row">
+        <span>Wireless Gamepad</span
+        ><span class="shortcut-key">Connected Pad</span>
+      </div>
+    </div>
+
+    <div id="telegram-modal" class="modal-overlay">
+      <div class="modal-content">
+        <div class="modal-icon">📢</div>
+        <h2 class="modal-title">Verification Required</h2>
+        <p class="modal-desc">
+          To unlock high-speed streaming and unrestricted downloads, please
+          authenticate via our official Telegram channel.
+        </p>
+        <a
+          href="https://t.me/+0xkq3yOzYH00ZWI1"
+          class="btn primary"
+          target="_blank"
+          onclick="markAsJoined()"
+          style="width: 100%"
+        >
+          Authenticate Now
+        </a>
+      </div>
+    </div>
+
+    <div id="toast" class="toast">Link copied to clipboard</div>
+
+    <script>
+      const body = document.body;
+      const toast = document.getElementById("toast");
+      const modal = document.getElementById("telegram-modal");
+      const shortcutsPanel = document.getElementById("shortcuts-panel");
+      const networkPill = document.getElementById("network-pill");
+
+      const storageKey = `zenith_progress_${encodeURIComponent("{{ file_name }}")}`;
+      const tgChannelUrl = "https://t.me/+0xkq3yOzYH00ZWI1";
+
+      if (localStorage.getItem("theme") === "light") {
+        body.classList.add("light");
+      }
+
+      function toggleTheme() {
+        body.classList.toggle("light");
+        localStorage.setItem(
+          "theme",
+          body.classList.contains("light") ? "light" : "dark",
+        );
+      }
+
+      function toggleShortcuts() {
+        shortcutsPanel.classList.toggle("show");
+      }
+
+      // Smart 24-Hour Lease Verification Check
+      function checkTelegramJoined() {
+        if (localStorage.getItem("tg_joined") === "true") return true;
+
+        const todayStr = new Date().toISOString().split("T")[0];
+        const lastPopupDate = localStorage.getItem("tg_last_popup_date");
+
+        if (lastPopupDate === todayStr) {
+          return true; // Already served their single popup for today, let them pass
+        }
+        return false;
+      }
+
+      function markAsJoined() {
+        localStorage.setItem("tg_joined", "true");
+        modal.classList.remove("show");
+      }
+
+      function forceTelegramRedirect() {
+        const todayStr = new Date().toISOString().split("T")[0];
+        localStorage.setItem("tg_last_popup_date", todayStr);
+
+        modal.classList.add("show");
+        window.open(tgChannelUrl, "_blank");
+      }
+
+      // Player Initialization (Core unchanged parameters)
+      const art = new Artplayer({
+        container: "#zenith-player",
+        url: "{{ file_url }}",
+        title: "{{ file_name }}",
+        poster: "{{ poster_url }}",
+        volume: 0.7,
+        isLive: false,
+        muted: false,
+        autoplay: false,
+        pip: true,
+        autoMini: true,
+        screenshot: true,
+        setting: true,
+        loop: false,
+        flip: true,
+        playbackRate: false,
+        hotkey: false,
+        aspectRatio: true,
+        fullscreen: true,
+        fullscreenWeb: false,
+        subtitleOffset: true,
+        miniProgressBar: true,
+        mutex: true,
+        backdrop: true,
+        playsInline: true,
+        autoPlayback: true,
+        theme: "#FF0000",
+        whitelist: ["*"],
+        moreVideoAttr: {
+          preload: "auto",
+          controlsList: "nodownload",
+        },
+        settings: [
+          {
+            html: "Playback Speed",
+            tooltip: "1.0x",
+            icon: '<svg style="width:22px;height:22px" viewBox="0 0 24 24"><path fill="currentColor" d="M10,16.5V7.5L16,12M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/></svg>',
+            selector: [
+              { html: "0.5x", rate: 0.5 },
+              { html: "0.75x", rate: 0.75 },
+              { html: "Normal", rate: 1.0, default: true },
+              { html: "1.25x", rate: 1.25 },
+              { html: "1.5x", rate: 1.5 },
+              { html: "2.0x", rate: 2.0 },
+              { html: "2.25x", rate: 2.25 },
+              { html: "2.5x", rate: 2.5 },
+              { html: "3.0x", rate: 3.0 },
+            ],
+            onSelect: function (item) {
+              art.playbackRate = item.rate;
+              return item.html;
+            },
+          },
+        ],
+        plugins: [
+          artplayerPluginAutoThumbnail({}),
+          artplayerPluginAmbilight({
+            blur: "50px",
+            opacity: 0.8,
+            zIndex: -1,
+          }),
+          artplayerPluginAsr({}),
+        ],
+      });
+
+      // Advanced Streaming Quality Diagnostic Hook
+      function calculateNetworkHealth() {
+        const conn =
+          navigator.connection ||
+          navigator.mozConnection ||
+          navigator.webkitConnection;
+        if (!conn) {
+          networkPill.textContent = "Network Health: Ready";
+          return;
+        }
+
+        const rtt = conn.rtt;
+        const downlink = conn.downlink; // Speed in Mbps (Megabits per second)
+
+        // Convert Megabits (Mbps) to Megabytes (MBps) and format to 1 decimal place
+        const speedMBps = (downlink / 8).toFixed(1);
+
+        if (downlink >= 15 && rtt <= 60) {
+          networkPill.textContent = `Network Health: Excellent (4K Ready - ${speedMBps} MBps)`;
+          networkPill.className = "network-status";
+        } else if (downlink >= 5) {
+          networkPill.textContent = `Network Health: Good (1080p - ${speedMBps} MBps)`;
+          networkPill.className = "network-status";
+        } else {
+          networkPill.textContent = `Network Health: Low Speed (720p/480p - ${speedMBps} MBps)`;
+          networkPill.className = "network-status buffering";
+        }
+      }
+
+      art.on("video:waiting", () => {
+        networkPill.textContent = "Network Status: Buffering Stream...";
+        networkPill.className = "network-status buffering";
+      });
+
+      art.on("video:playing", () => {
+        calculateNetworkHealth();
+      });
+
+      art.on("video:timeupdate", () => {
+        try {
+          localStorage.setItem(storageKey, art.currentTime);
+        } catch (error) {
+          console.error("Storage write error:", error);
+        }
+      });
+
+      art.on("ready", () => {
+        console.info(art.theme);
+        art.theme = "#FF0000";
+        console.info(art.theme);
+        calculateNetworkHealth();
+        if (navigator.connection) {
+          navigator.connection.addEventListener(
+            "change",
+            calculateNetworkHealth,
+          );
+        }
+
+        try {
+          const savedTime = localStorage.getItem(storageKey);
+          if (savedTime) {
+            art.currentTime = parseFloat(savedTime);
+          }
+        } catch (error) {
+          console.error("Failed to restore position:", error);
+        }
+
+        // Initialize Native HTML5 Gamepad Loop Setup
+        pollGamepadInput();
+      });
+
+      let hasCheckedTelegram = false;
+      art.on("play", () => {
+        if (!hasCheckedTelegram && !checkTelegramJoined()) {
+          art.pause();
+          forceTelegramRedirect();
+        } else {
+          hasCheckedTelegram = true;
+        }
+      });
+
+      function handleDownload() {
+        if (!checkTelegramJoined()) {
+          forceTelegramRedirect();
+          return;
+        }
+        try {
+          const downloadAnchor = document.createElement("a");
+          downloadAnchor.href = "{{ file_url }}";
+          downloadAnchor.setAttribute("download", "");
+          document.body.appendChild(downloadAnchor);
+          downloadAnchor.click();
+          document.body.removeChild(downloadAnchor);
+        } catch (error) {
+          console.error("Download failed:", error);
+        }
+      }
+
+      setTimeout(() => {
+        if (!checkTelegramJoined()) {
+          art.pause();
+          forceTelegramRedirect();
+        }
+      }, 10000);
+
+      // System Keyboard Routing Mechanics
+      window.addEventListener("keydown", (e) => {
+        if (
+          document.activeElement.tagName === "INPUT" ||
+          document.activeElement.tagName === "TEXTAREA"
+        )
+          return;
+
+        if (
+          !checkTelegramJoined() &&
+          (e.key === " " || e.key.toLowerCase() === "f")
+        ) {
+          e.preventDefault();
+          forceTelegramRedirect();
+          return;
+        }
+
+        // Check for numeric segment jumpers (1-9 skipping to 10% - 90%)
+        if (e.key >= "1" && e.key <= "9") {
+          e.preventDefault();
+          const targetPercentage = parseInt(e.key) / 10;
+          if (art.duration) {
+            art.currentTime = art.duration * targetPercentage;
+          }
+          return;
+        }
+
+        switch (e.key.toLowerCase()) {
+          case "?":
+            e.preventDefault();
+            toggleShortcuts();
+            break;
+          case " ":
+            e.preventDefault();
+            art.toggle();
+            break;
+          case "arrowright":
+            e.preventDefault();
+            art.forward = 5;
+            break;
+          case "arrowleft":
+            e.preventDefault();
+            art.backward = 5;
+            break;
+          case "arrowup":
+            e.preventDefault();
+            art.volume = Math.min(1, art.volume + 0.1);
+            break;
+          case "arrowdown":
+            e.preventDefault();
+            art.volume = Math.max(0, art.volume - 0.1);
+            break;
+          case "f":
+            e.preventDefault();
+            art.fullscreen = !art.fullscreen;
+            break;
+        }
+      });
+
+      // Wireless Hardware Gamepad Loop Processing Engine
+      let lastGamepadAction = 0;
+      function pollGamepadInput() {
+        const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+        const gp = gamepads[0]; // Listen on primary channel link index 0
+
+        if (gp) {
+          const now = performance.now();
+          // Implement standard 250ms hardware debounce threshold
+          if (now - lastGamepadAction > 250) {
+            // Primary Action Face Button A / Cross -> Toggle Stream Playback
+            if (gp.buttons[0].pressed) {
+              art.toggle();
+              lastGamepadAction = now;
+            }
+            // Secondary Action Face Button Y / Triangle -> Fullscreen Mode
+            if (gp.buttons[3].pressed) {
+              art.fullscreen = !art.fullscreen;
+              lastGamepadAction = now;
+            }
+            // D-Pad Left or Analog Axis Left Trigger -> Seek Backward 5s
+            if (gp.buttons[14].pressed || gp.axes[0] < -0.5) {
+              art.backward = 5;
+              lastGamepadAction = now;
+            }
+            // D-Pad Right or Analog Axis Right Trigger -> Seek Forward 5s
+            if (gp.buttons[15].pressed || gp.axes[0] > 0.5) {
+              art.forward = 5;
+              lastGamepadAction = now;
+            }
+            // D-Pad Up to elevate volume levels
+            if (gp.buttons[12].pressed || gp.axes[1] < -0.5) {
+              art.volume = Math.min(1, art.volume + 0.05);
+              lastGamepadAction = now;
+            }
+            // D-Pad Down to lower volume levels
+            if (gp.buttons[13].pressed || gp.axes[1] > 0.5) {
+              art.volume = Math.max(0, art.volume - 0.05);
+              lastGamepadAction = now;
+            }
+          }
+        }
+        requestAnimationFrame(pollGamepadInput);
+      }
+
+      async function copyPageLink() {
+        try {
+          await navigator.clipboard.writeText(window.location.href);
+          toast.classList.add("show");
+          setTimeout(() => toast.classList.remove("show"), 2500);
+        } catch (error) {
+          console.error("Link copy action failure: ", error);
+        }
+      }
+    </script>
+  </body>
+</html>
