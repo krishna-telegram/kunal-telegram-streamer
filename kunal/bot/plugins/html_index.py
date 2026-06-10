@@ -116,12 +116,15 @@ async def create_html_handler(bot, message):
     def extract_real_folder_name(text: str) -> str:
         if not text: return "General"
         for line in text.split('\n'):
-            clean_line = line.strip()
-            # Find the line that starts with "Topic:"
-            if clean_line.lower().startswith("topic:") or clean_line.lower().startswith("topic :"):
-                parts = clean_line.split(':', 1)
-                if len(parts) > 1:
-                    return parts[1].strip()
+            # Remove HTML tags to simplify matching
+            clean_line = re.sub(r'<[^>]+>', '', line).strip()
+            # Match "Topic:" or "Topic -" with optional markdown (* or _) anywhere around them
+            match = re.search(r'(?i)^[\*_]*topic[\*_]*\s*[:\-]\s*[\*_]*(.+)$', clean_line)
+            if match:
+                folder = match.group(1).strip()
+                # Remove any trailing markdown asterisks or underscores from the extracted folder name
+                folder = re.sub(r'[\*_]+$', '', folder).strip()
+                return folder
         return "General"
     # -----------------------------------------------------
 
