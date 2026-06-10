@@ -1,6 +1,6 @@
 pyrofork==2.3.48
-tgcrypto<=1.2.3
-aiohttp<=3.8.1
+tgcrypto
+aiohttp
 python-dotenv<=0.20.0
 motor
 aiofiles
