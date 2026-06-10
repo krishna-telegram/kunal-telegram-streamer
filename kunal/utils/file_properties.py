@@ -57,3 +57,25 @@ def get_name(media_msg: Message) -> str:
 def get_media_file_size(m):
     media = get_media_from_message(m)
     return getattr(media, "file_size", 0)
+
+class MockMedia:
+    def __init__(self, file_name=None, file_size=0, mime_type=None, file_unique_id=None):
+        self.file_name = file_name
+        self.file_size = file_size
+        self.mime_type = mime_type
+        self.file_unique_id = file_unique_id
+
+class MockMessage:
+    def __init__(self, id, media_type, file_name, file_hash, file_size=0, mime_type=None):
+        self.id = id
+        self.empty = False
+        media_obj = MockMedia(
+            file_name=file_name,
+            file_size=file_size,
+            mime_type=mime_type,
+            file_unique_id=file_hash
+        )
+        setattr(self, media_type, media_obj)
+
+def create_mock_message(id, media_type, file_name, file_hash, file_size=0, mime_type=None):
+    return MockMessage(id, media_type, file_name, file_hash, file_size, mime_type)
