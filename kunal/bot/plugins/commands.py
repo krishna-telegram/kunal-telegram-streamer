@@ -72,7 +72,7 @@ async def start(b, m):
 
     if sub_status == "not_joined":
         caption = f"{m.from_user.mention},\n\n<b><i>⚠️ Please join the updates channel to use this bot.</i></b>\n\n<i>Due to high traffic, access is limited to subscribers only 😊</i>"
-        markup = InlineKeyboardMarkup([[InlineKeyboardButton("📢 Join Updates Channel", url="https://t.me/+Z-Tbu-C9csc0MjVh")]])
+        markup = InlineKeyboardMarkup([[InlineKeyboardButton("📢 Join Updates Channel", url="https://t.me/+OMIkYPrmHz8zNDJl")]])
         
         if photo_file:
             return await b.send_photo(chat_id=m.chat.id, photo=photo_file, caption=caption, reply_markup=markup)
