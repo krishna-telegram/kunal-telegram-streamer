@@ -1,4 +1,5 @@
 import os
+import random
 import logging
 import httpx
 from pyrogram import filters
@@ -17,10 +18,16 @@ async def download_random_profile_image(retries=3):
     async with httpx.AsyncClient(follow_redirects=True) as client:
         for i in range(retries):
             try:
-                res = await client.get("https://picsum.photos/600")
-                if res.status_code == 200:
-                    with open(path, "wb") as f: f.write(res.content)
-                    return path
+                image_id = random.randint(1, 1084)
+                res_info = await client.get(f"https://picsum.photos/id/{image_id}/info")
+                if res_info.status_code == 200:
+                    data = res_info.json()
+                    download_url = data.get("download_url")
+                    if download_url:
+                        res_img = await client.get(download_url)
+                        if res_img.status_code == 200:
+                            with open(path, "wb") as f: f.write(res_img.content)
+                            return path
             except Exception as e:
                 logging.error(f"Image download attempt {i+1} failed: {e}")
     return path if os.path.exists(path) else None
@@ -63,7 +70,7 @@ async def start(b, m):
         return await b.send_message(chat_id=m.chat.id, text=caption, reply_markup=markup)
         
     elif sub_status == "error":
-        return await b.send_message(m.chat.id, "<b>⚠️ Something went wrong. <a href='https://telegram.me/TechifySupport'>Click here for support</a></b>", disable_web_page_preview=True)
+        return await b.send_message(m.chat.id, "<b>⚠️ Something went wrong. <a href='https://t.me/got_nirvana'>Click here for support</a></b>", disable_web_page_preview=True)
     elif sub_status is False:
         return await b.send_message(m.chat.id, "❌ Sorry, you are banned from using this bot. Please contact the owner for assistance.", disable_web_page_preview=True)
 
