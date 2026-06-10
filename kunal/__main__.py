@@ -1,4 +1,12 @@
 import os, sys, glob, asyncio, logging, importlib, traceback, aiohttp
+
+# Create event loop before importing pyrogram to fix Python 3.10+ RuntimeError
+try:
+    loop = asyncio.get_running_loop()
+except RuntimeError:
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
 from pathlib import Path
 from pyrogram import idle
 from aiohttp import web
@@ -19,8 +27,6 @@ for logger in ["aiohttp", "pyrogram", "aiohttp.web"]:
     logging.getLogger(logger).setLevel(logging.ERROR)
 
 files = glob.glob("kunal/bot/plugins/*.py")
-StreamBot.start()
-loop = asyncio.get_event_loop()
 
 async def ping_server():
     while True:
@@ -36,6 +42,7 @@ async def ping_server():
 
 async def start_services():
     console.print("\n[bold cyan]🔧 Initializing Telegram Bot...[/bold cyan]")
+    await StreamBot.start()
     bot_info = await StreamBot.get_me()
     StreamBot.username = bot_info.username
     
