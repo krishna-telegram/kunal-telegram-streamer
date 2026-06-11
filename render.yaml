@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: kunal-tg-streamer
+    name: telegram-streamer-bot
     env: python
     region: frankfurt
     plan: free
@@ -27,5 +27,7 @@ services:
         value: "None"
       - key: ON_HEROKU
         value: "True"
+      - key: PYTHON_VERSION
+        value: "3.11.9"
       - key: URL
         sync: false
