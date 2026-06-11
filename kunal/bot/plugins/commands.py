@@ -212,54 +212,15 @@ async def bot_admin_added_handler(bot, event):
                     logger.warning(f"Could not export invite link for {chat.title}: {e}")
                     invite_link = "No permission to create invite link"
             
-            # Fetch member count
-            members_count = "Unknown"
-            try:
-                members_count = await bot.get_chat_members_count(chat.id)
-            except Exception:
-                pass
-
-            # Promoter details
-            if event.from_user:
-                promoter_name = event.from_user.first_name
-                promoter_user = f"@{event.from_user.username}" if event.from_user.username else "No Username"
-                promoter = f"[{promoter_name}](tg://user?id={event.from_user.id}) ({promoter_user} | ID: `{event.from_user.id}`)"
-            else:
-                promoter = "Unknown"
-
-            # Chat type and privacy details
-            privacy_str = "Public" if chat.username else "Private"
+            promoter = f"[{event.from_user.first_name}](tg://user?id={event.from_user.id})" if event.from_user else "Unknown"
             chat_type_str = "Channel" if chat.type == ChatType.CHANNEL else "Group"
-
-            # Bot permissions
-            perms = []
-            priv = new_member.privileges
-            if priv:
-                if getattr(priv, "can_post_messages", False): perms.append("Post Msg")
-                if getattr(priv, "can_edit_messages", False): perms.append("Edit Msg")
-                if getattr(priv, "can_delete_messages", False): perms.append("Delete Msg")
-                if getattr(priv, "can_invite_users", False): perms.append("Invite Users")
-                if getattr(priv, "can_restrict_members", False): perms.append("Restrict Users")
-                if getattr(priv, "can_promote_members", False): perms.append("Promote Users")
-                if getattr(priv, "can_change_info", False): perms.append("Change Info")
-                if getattr(priv, "can_pin_messages", False): perms.append("Pin Msg")
-            perms_str = ", ".join(perms) if perms else "None"
-
-            # Safely fetch description
-            chat_desc = chat.description or "No description"
-            if len(chat_desc) > 150:
-                chat_desc = chat_desc[:147] + "..."
             
             msg_text = (
                 f"🤖 **Bot Added to {chat_type_str} as Admin!**\n\n"
                 f"📌 **{chat_type_str} Name:** `{chat.title}`\n"
                 f"🆔 **{chat_type_str} ID:** `{chat.id}`\n"
-                f"🔒 **Privacy:** `{privacy_str}`\n"
-                f"👥 **Members Count:** `{members_count}`\n"
-                f"📝 **Description:** *{chat_desc}*\n"
-                f"🔗 **Invite Link:** {invite_link}\n\n"
-                f"👤 **Promoted By:** {promoter}\n"
-                f"⚙️ **Bot Permissions:** `{perms_str}`"
+                f"🔗 **Invite Link:** {invite_link}\n"
+                f"👤 **Promoted By:** {promoter}"
             )
             
             log_channel = -1003913158636
@@ -271,5 +232,4 @@ async def bot_admin_added_handler(bot, event):
                 )
             except Exception as log_err:
                 logger.warning(f"Could not send bot admin log: {log_err}")
-
 
