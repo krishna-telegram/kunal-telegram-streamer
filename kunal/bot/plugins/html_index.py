@@ -41,8 +41,8 @@ async def create_html_handler(bot, message):
                     # Convert to RGB to prevent transparency bugs in JPEG
                     if img.mode != "RGB":
                         img = img.convert("RGB")
-                    # Resize keeping aspect ratio intact (max 500px)
-                    img.thumbnail((500, 500))
+                    # Resize keeping aspect ratio intact (max 320px) to reduce HTML bloat
+                    img.thumbnail((320, 320))
                     
                     buffered = io.BytesIO()
                     img.save(buffered, format="JPEG", quality=85)
@@ -84,7 +84,7 @@ async def create_html_handler(bot, message):
                     if clean_line:
                         extracted_name = clean_line
             if extracted_name:
-                return extracted_name[:60].strip()
+                return extracted_name.strip()
 
         # 2. Existing Rule: Subject / Topic Fallback
         subject, topic = None, None
@@ -106,8 +106,8 @@ async def create_html_handler(bot, message):
         for line in lines:
             clean_line = line.strip()
             if clean_line and not all(c in '━-=_*| ' for c in clean_line):
-                return clean_line[:60].strip()
-        return lines[0][:60].strip() if lines else "General"
+                return clean_line.strip()
+        return lines[0].strip() if lines else "General"
     # -----------------------------------------------------
 
     # -----------------------------------------------------
@@ -318,51 +318,9 @@ async def create_html_handler(bot, message):
                     continue
 
             # --- PROCESS AND ADD MEDIA CARD (Both Logics) ---
-            forward_data = await db.get_forwarded(target, post_id)
+            # User specifically requested to ALWAYS forward to the BIN_CHANNEL during /createhtml
+            # and to bypass the database cache check for previously forwarded messages.
             log_msg = None
-            if forward_data:
-                target_msg_id = forward_data.get('target_msg_id')
-                media_type = forward_data.get('media_type')
-                file_name = forward_data.get('file_name')
-                file_hash = forward_data.get('file_hash')
-                file_size = forward_data.get('file_size', 0)
-                mime_type = forward_data.get('mime_type')
-                
-                if media_type and file_name and file_hash:
-                    logger.info(f"⚡ [CACHE HIT] Found message {target}/{post_id} in Database. Skipping Telegram fetch.")
-                    log_msg = create_mock_message(target_msg_id, media_type, file_name, file_hash, file_size, mime_type)
-                else:
-                    try:
-                        logger.info(f"⏳ [CACHE HIT - OLD RECORD] Found target_msg_id={target_msg_id} for {target}/{post_id}. Fetching from Telegram to update cache...")
-                        log_msg = await bot.get_messages(chat_id=Var.BIN_CHANNEL, message_ids=target_msg_id)
-                        if getattr(log_msg, "empty", False):
-                            log_msg = None
-                        else:
-                            # Update old cache with metadata
-                            media = get_media_from_message(log_msg)
-                            media_type = None
-                            for attr in ("audio", "document", "photo", "sticker", "animation", "video", "voice", "video_note"):
-                                if getattr(log_msg, attr, None):
-                                    media_type = attr
-                                    break
-                            
-                            file_name = getattr(media, "file_name", "")
-                            file_hash = getattr(media, "file_unique_id", "")[:6]
-                            file_size = getattr(media, "file_size", 0)
-                            mime_type = getattr(media, "mime_type", "")
-                            
-                            await db.save_forwarded(
-                                source_chat_id=target,
-                                source_msg_id=post_id,
-                                target_msg_id=log_msg.id,
-                                media_type=media_type,
-                                file_name=file_name,
-                                file_hash=file_hash,
-                                file_size=file_size,
-                                mime_type=mime_type
-                            )
-                    except Exception:
-                        log_msg = None
 
             if not log_msg:
                 logger.info(f"📤 [FORWARD] Message {target}/{post_id} not cached. Forwarding to BIN_CHANNEL...")
@@ -441,15 +399,17 @@ async def create_html_handler(bot, message):
 
             # Generate High-Quality Thumbnail safely
             b64_thumb = await fetch_quality_thumbnail(bot, original_message)
-            thumb_style = f"background-image: url('{b64_thumb}'); background-size: cover; background-position: center;" if b64_thumb else ""
-            thumb_content = "" if b64_thumb else icon
+            if b64_thumb:
+                thumb_content = f'<img src="{b64_thumb}" loading="lazy" alt="Thumbnail" class="lazy-thumb">'
+            else:
+                thumb_content = f'<div class="icon-fallback">{icon}</div>'
             
             size_str = humanbytes(get_media_file_size(original_message))
             clean_name = html.escape(raw_name)
 
             card_html = f'''
             <div class="card item-card" data-type="{item_type}" data-title="{clean_name.lower()}" data-folder="{current_category}">
-                <div class="thumb" style="{thumb_style}">{thumb_content}</div>
+                <div class="thumb">{thumb_content}</div>
                 <div class="details">
                     <h3 class="title" title="{clean_name}">{clean_name}</h3>
                     <div class="meta">
@@ -487,15 +447,13 @@ async def create_html_handler(bot, message):
         thumb_bg = folder_thumbs.get(folder)
         
         if thumb_bg:
-            thumb_style = f"background-image: url('{thumb_bg}'); background-size: cover; background-position: center; height: 170px; border-radius: 18px; box-shadow: inset 0 0 30px rgba(0,0,0,0.6);"
-            thumb_content = ""
+            thumb_content = f'<img src="{thumb_bg}" loading="lazy" alt="Folder" class="lazy-thumb">'
         else:
-            thumb_style = "background: transparent; box-shadow: none; font-size: 80px; height: 120px;"
-            thumb_content = "📁"
+            thumb_content = f'<div class="icon-fallback folder-icon">📁</div>'
 
         folders_grid_html += f'''
         <div class="card folder-card" onclick="openFolder('{folder}')">
-            <div class="thumb" style="{thumb_style}">{thumb_content}</div>
+            <div class="thumb">{thumb_content}</div>
             <div class="details" style="align-items: center; text-align: center; flex-grow: 0; margin-top: 10px;">
                 <h3 class="title" style="margin-bottom: 8px; font-size: 20px;">{folder}</h3>
                 <div class="meta" style="border: none; padding: 0; margin: 0; justify-content: center;">
@@ -509,7 +467,7 @@ async def create_html_handler(bot, message):
     # Generate Item Grids (All Hidden by Default)
     grids_html = ""
     for i, (folder, cards) in enumerate(categories.items()):
-        grids_html += f'<div class="grid media-grid" id="folder-{folder}" style="display: none;">\n'
+        grids_html += f'<div class="grid media-grid hidden" id="folder-{folder}">\n'
         grids_html += "".join(cards)
         grids_html += '</div>\n'
 
@@ -523,145 +481,133 @@ async def create_html_handler(bot, message):
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {{
-            --bg: #0f1115;
+            --bg: #0B0D12;
             --text: #f5f7fa;
-            --muted: #aab2c0;
-            --card-bg: rgba(30, 35, 45, 0.45);
-            --card-border: rgba(255, 255, 255, 0.08);
-            --accent: #4da3ff;
-            --accent-hover: #3b82f6;
-            --blob1: #4da3ff;
-            --blob2: #7c3aed;
-            --btn-dl-bg: rgba(255, 255, 255, 0.08);
+            --muted: #8E9BAE;
+            --card-bg: #14171E;
+            --card-border: #212630;
+            --card-hover-border: #3A455A;
+            --accent: #2A6BFF;
+            --accent-hover: #1E55D6;
+            --btn-dl-bg: #1B202A;
+            --btn-dl-hover: #262D3B;
         }}
         body.light-mode {{
-            --bg: #eef2f6;
-            --text: #0f172a;
-            --muted: #64748b;
-            --card-bg: rgba(255, 255, 255, 0.65);
-            --card-border: rgba(255, 255, 255, 0.4);
+            --bg: #F4F7FB;
+            --text: #111827;
+            --muted: #6B7280;
+            --card-bg: #FFFFFF;
+            --card-border: #E5E7EB;
+            --card-hover-border: #D1D5DB;
             --accent: #2563eb;
             --accent-hover: #1d4ed8;
-            --blob1: #93c5fd;
-            --blob2: #c4b5fd;
-            --btn-dl-bg: rgba(0, 0, 0, 0.05);
+            --btn-dl-bg: #F3F4F6;
+            --btn-dl-hover: #E5E7EB;
         }}
         * {{ box-sizing: border-box; margin: 0; padding: 0; }}
         body {{
             font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text);
             min-height: 100vh; padding: 30px 20px; overflow-x: hidden;
-            transition: background 0.5s ease, color 0.5s ease;
+            transition: background 0.3s ease, color 0.3s ease;
         }}
         
-        /* Animated Background Blobs */
-        .blob {{ position: fixed; border-radius: 50%; filter: blur(100px); z-index: -1; opacity: 0.4; animation: float 15s infinite alternate ease-in-out; pointer-events: none; }}
-        .blob-1 {{ top: -10%; left: -10%; width: 40vw; height: 40vw; background: var(--blob1); transition: background 0.5s ease; }}
-        .blob-2 {{ bottom: -10%; right: -10%; width: 35vw; height: 35vw; background: var(--blob2); animation-delay: -5s; transition: background 0.5s ease; }}
-        @keyframes float {{ 0% {{ transform: translate(0, 0) scale(1); }} 100% {{ transform: translate(50px, 50px) scale(1.1); }} }}
+        .hidden {{ display: none !important; }}
 
         /* Theme Toggle */
         .theme-toggle {{
             position: absolute; top: 20px; right: 20px;
             background: var(--card-bg); border: 1px solid var(--card-border);
             border-radius: 50%; width: 50px; height: 50px;
-            font-size: 22px; cursor: pointer; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; align-items: center; justify-content: center;
-            color: var(--text); z-index: 100; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+            font-size: 22px; cursor: pointer;
+            transition: all 0.3s ease; display: flex; align-items: center; justify-content: center;
+            color: var(--text); z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }}
-        .theme-toggle:hover {{ transform: scale(1.15) rotate(15deg); }}
+        .theme-toggle:hover {{ transform: scale(1.1); border-color: var(--card-hover-border); }}
 
         /* Header */
-        .header {{ text-align: center; margin-bottom: 30px; animation: fadeIn 1s ease; position: relative; z-index: 1; }}
+        .header {{ text-align: center; margin-bottom: 30px; animation: fadeIn 0.6s ease; }}
         .header img {{
-            width: 120px; height: 120px; border-radius: 50%; object-fit: cover;
-            border: 3px solid var(--accent); box-shadow: 0 10px 25px rgba(77, 163, 255, 0.3);
-            margin-bottom: 15px; transition: transform 0.4s ease;
+            width: 100px; height: 100px; border-radius: 50%; object-fit: cover;
+            border: 2px solid var(--card-border);
+            margin-bottom: 12px; transition: transform 0.3s ease;
         }}
         .header img:hover {{ transform: scale(1.05); }}
-        .header h1 {{ font-size: 32px; font-weight: 800; margin-bottom: 8px; letter-spacing: -0.5px; }}
-        .header p {{ color: var(--muted); font-size: 16px; max-width: 600px; margin: 0 auto 25px; }}
+        .header h1 {{ font-size: 28px; font-weight: 700; margin-bottom: 6px; }}
+        .header p {{ color: var(--muted); font-size: 15px; max-width: 600px; margin: 0 auto 20px; }}
         
         /* Search & Filters */
-        .search-container {{ max-width: 600px; margin: 0 auto 25px; position: relative; z-index: 1; }}
+        .search-container {{ max-width: 600px; margin: 0 auto 20px; position: relative; }}
         .search-container input {{
-            width: 100%; padding: 16px 25px; border-radius: 30px; border: 1px solid var(--card-border);
-            background: var(--card-bg); color: var(--text); font-size: 16px; outline: none;
-            transition: all 0.4s ease; backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
+            width: 100%; padding: 14px 22px; border-radius: 16px; border: 1px solid var(--card-border);
+            background: var(--card-bg); color: var(--text); font-size: 15px; outline: none;
+            transition: all 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }}
-        .search-container input:focus {{ border-color: var(--accent); box-shadow: 0 10px 30px rgba(77, 163, 255, 0.2); transform: translateY(-2px); }}
+        .search-container input:focus {{ border-color: var(--accent); box-shadow: 0 4px 16px rgba(42, 107, 255, 0.15); }}
         
-        .filters {{ display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-bottom: 25px; z-index: 1; position: relative; }}
+        .filters {{ display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 25px; }}
         .filter-btn {{
-            padding: 10px 20px; border-radius: 25px; border: 1px solid var(--card-border);
-            background: var(--card-bg); color: var(--text); font-size: 14px; font-weight: 600;
-            cursor: pointer; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            padding: 8px 18px; border-radius: 20px; border: 1px solid var(--card-border);
+            background: var(--card-bg); color: var(--text); font-size: 14px; font-weight: 500;
+            cursor: pointer; transition: all 0.2s ease;
         }}
-        .filter-btn:hover {{ transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }}
-        .filter-btn.active {{ background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 8px 20px rgba(77, 163, 255, 0.3); }}
+        .filter-btn:hover {{ border-color: var(--card-hover-border); }}
+        .filter-btn.active {{ background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }}
         
         /* Back Button */
-        .back-btn-container {{ text-align: center; margin-bottom: 30px; position: relative; z-index: 1; }}
+        .back-btn-container {{ text-align: center; margin-bottom: 25px; }}
         .back-btn {{
-            display: none;
-            padding: 12px 28px; background: var(--card-bg); border: 1px solid var(--accent);
-            color: var(--text); border-radius: 20px; font-size: 16px; font-weight: 700;
-            cursor: pointer; backdrop-filter: blur(10px); transition: all 0.3s ease;
+            display: none; padding: 10px 24px; background: var(--card-bg); border: 1px solid var(--card-border);
+            color: var(--text); border-radius: 16px; font-size: 15px; font-weight: 600;
+            cursor: pointer; transition: all 0.2s ease;
         }}
-        .back-btn:hover {{ background: var(--accent); color: #fff; transform: translateY(-3px); box-shadow: 0 10px 20px rgba(77,163,255,0.2); }}
+        .back-btn:hover {{ border-color: var(--accent); color: var(--accent); }}
 
         /* Grid & Cards */
         .grid {{
-            display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 30px; max-width: 1400px; margin: 0 auto; position: relative; z-index: 1;
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px; max-width: 1300px; margin: 0 auto;
         }}
         .card {{
-            background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 28px;
-            padding: 22px; display: flex; flex-direction: column; gap: 16px;
-            backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            animation: fadeIn 0.6s ease forwards;
+            background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 20px;
+            padding: 16px; display: flex; flex-direction: column; gap: 14px;
+            transition: all 0.2s ease; contain: content;
         }}
-        .card:hover {{ transform: translateY(-12px); box-shadow: 0 25px 45px rgba(0, 0, 0, 0.2); border-color: var(--accent); }}
+        .card:hover {{ transform: translateY(-4px); border-color: var(--card-hover-border); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }}
         
-        /* Folder Specific Styles */
         .folder-card {{ cursor: pointer; justify-content: center; }}
-        .folder-card:hover {{ border-color: var(--blob2); box-shadow: 0 20px 40px rgba(124, 58, 237, 0.2); }}
+        .folder-card:hover {{ border-color: var(--accent); }}
 
         .thumb {{
-            height: 170px; display: flex; align-items: center; justify-content: center;
-            font-size: 65px; background: rgba(0, 0, 0, 0.3); border-radius: 18px;
-            box-shadow: inset 0 0 20px rgba(0,0,0,0.3); transition: transform 0.4s ease;
+            height: 160px; display: flex; align-items: center; justify-content: center;
+            background: var(--btn-dl-bg); border-radius: 14px; overflow: hidden;
         }}
-        .card.item-card:hover .thumb {{ transform: scale(1.03); }}
+        .thumb img.lazy-thumb {{ width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }}
+        .card.item-card:hover .thumb img.lazy-thumb {{ transform: scale(1.05); }}
+        .icon-fallback {{ font-size: 60px; }}
         
         .details {{ display: flex; flex-direction: column; flex-grow: 1; }}
-        .title {{ font-size: 17px; font-weight: 700; margin-bottom: 12px; line-height: 1.4; word-break: break-all; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }}
-        .meta {{ display: flex; justify-content: space-between; color: var(--muted); font-size: 14px; font-weight: 500; margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid var(--card-border); }}
+        .title {{ font-size: 15px; font-weight: 600; margin-bottom: 10px; line-height: 1.4; word-break: break-all; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }}
+        .meta {{ display: flex; justify-content: space-between; color: var(--muted); font-size: 13px; font-weight: 500; margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--card-border); }}
         
         /* Buttons */
-        .buttons {{ display: flex; gap: 14px; margin-top: auto; }}
-        .btn {{ flex: 1; padding: 14px; border-radius: 16px; text-decoration: none; text-align: center; font-size: 15px; font-weight: 700; transition: all 0.3s ease; }}
-        .btn-stream {{ background: linear-gradient(135deg, var(--accent), #6ab7ff); color: #fff; box-shadow: 0 6px 20px rgba(77, 163, 255, 0.25); border: none; }}
-        .btn-stream:hover {{ box-shadow: 0 10px 25px rgba(77, 163, 255, 0.4); transform: translateY(-3px); }}
-        .btn-dl {{ background: var(--btn-dl-bg); color: var(--text); border: 1px solid var(--card-border); }}
-        .btn-dl:hover {{ background: var(--card-border); transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.1); }}
+        .buttons {{ display: flex; gap: 10px; margin-top: auto; }}
+        .btn {{ flex: 1; padding: 12px; border-radius: 12px; text-decoration: none; text-align: center; font-size: 14px; font-weight: 600; transition: all 0.2s ease; border: 1px solid transparent; }}
+        .btn-stream {{ background: var(--accent); color: #fff; }}
+        .btn-stream:hover {{ background: var(--accent-hover); }}
+        .btn-dl {{ background: var(--btn-dl-bg); color: var(--text); border-color: var(--card-border); }}
+        .btn-dl:hover {{ background: var(--btn-dl-hover); border-color: var(--card-hover-border); }}
 
-        @keyframes fadeIn {{ from {{ opacity: 0; transform: translateY(30px); }} to {{ opacity: 1; transform: translateY(0); }} }}
+        @keyframes fadeIn {{ from {{ opacity: 0; transform: translateY(15px); }} to {{ opacity: 1; transform: translateY(0); }} }}
         @media (max-width: 600px) {{ 
-            .grid {{ grid-template-columns: 1fr; gap: 20px; }} 
-            .card {{ padding: 18px; border-radius: 24px; }}
-            .thumb {{ height: 150px; border-radius: 14px; }}
-            .theme-toggle {{ top: 15px; right: 15px; width: 40px; height: 40px; font-size: 18px; }}
-            .header h1 {{ font-size: 26px; }}
+            .grid {{ grid-template-columns: 1fr; gap: 16px; }} 
+            .card {{ padding: 14px; border-radius: 16px; }}
+            .thumb {{ height: 140px; border-radius: 12px; }}
+            .theme-toggle {{ top: 15px; right: 15px; width: 42px; height: 42px; font-size: 18px; }}
+            .header h1 {{ font-size: 24px; }}
         }}
     </style>
 </head>
 <body>
-    <div class="blob blob-1"></div>
-    <div class="blob blob-2"></div>
-
     <button class="theme-toggle" onclick="toggleTheme()" aria-label="Toggle Theme">🌓</button>
 
     <div class="header">
@@ -670,7 +616,7 @@ async def create_html_handler(bot, message):
         <p>{channel_desc}</p>
         
         <div class="search-container">
-            <input type="text" id="search" placeholder="🔍 Search across files..." onkeyup="filterCards()">
+            <input type="text" id="search" placeholder="🔍 Search across files..." onkeyup="debouncedFilter()">
         </div>
         
         <div class="filters">
@@ -689,7 +635,7 @@ async def create_html_handler(bot, message):
         {folders_grid_html}
     </div>
 
-    <div id="grids-container" style="display: none;">
+    <div id="grids-container" class="hidden">
         {grids_html}
     </div>
 
@@ -704,30 +650,33 @@ async def create_html_handler(bot, message):
         let isFolderView = true;
         let currentFolder = '';
         let currentFilter = 'all';
+        let debounceTimer;
 
         function showFolders() {{
             isFolderView = true;
             currentFolder = '';
-            document.getElementById('folders-container').style.display = 'block';
-            document.getElementById('grids-container').style.display = 'none';
+            document.getElementById('folders-container').classList.remove('hidden');
+            document.getElementById('grids-container').classList.add('hidden');
             document.getElementById('backBtn').style.display = 'none';
             document.getElementById('search').value = ''; 
             
             currentFilter = 'all';
             document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelector('.filter-btn').classList.add('active'); // Set 'All' as active
+            document.querySelector('.filter-btn').classList.add('active');
         }}
 
         function openFolder(folderName) {{
             isFolderView = false;
             currentFolder = folderName;
             
-            document.getElementById('folders-container').style.display = 'none';
-            document.getElementById('grids-container').style.display = 'block';
+            document.getElementById('folders-container').classList.add('hidden');
+            document.getElementById('grids-container').classList.remove('hidden');
             document.getElementById('backBtn').style.display = 'inline-block';
             
-            document.querySelectorAll('.grid.media-grid').forEach(grid => grid.style.display = 'none');
-            document.getElementById('folder-' + folderName).style.display = 'grid';
+            document.querySelectorAll('.grid.media-grid').forEach(grid => grid.classList.add('hidden'));
+            
+            let targetGrid = document.getElementById('folder-' + folderName);
+            if (targetGrid) targetGrid.classList.remove('hidden');
             
             filterCards(); 
         }}
@@ -737,35 +686,38 @@ async def create_html_handler(bot, message):
             document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
             if(btnElement) btnElement.classList.add('active');
             
-            // If filtering while looking at the folders, automatically trigger global search mode
             if (isFolderView && type !== 'all') {{
-                document.getElementById('folders-container').style.display = 'none';
-                document.getElementById('grids-container').style.display = 'block';
+                document.getElementById('folders-container').classList.add('hidden');
+                document.getElementById('grids-container').classList.remove('hidden');
                 document.getElementById('backBtn').style.display = 'inline-block';
                 isFolderView = false;
             }}
             filterCards();
         }}
 
+        function debouncedFilter() {{
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(filterCards, 250);
+        }}
+
         function filterCards() {{
             const query = document.getElementById('search').value.toLowerCase();
             
-            // If typing in search while looking at folders, automatically trigger global search mode
             if (isFolderView && query.length > 0) {{
-                document.getElementById('folders-container').style.display = 'none';
-                document.getElementById('grids-container').style.display = 'block';
+                document.getElementById('folders-container').classList.add('hidden');
+                document.getElementById('grids-container').classList.remove('hidden');
                 document.getElementById('backBtn').style.display = 'inline-block';
                 isFolderView = false;
             }}
 
             const isGlobalSearch = !currentFolder || query.length > 0 || currentFilter !== 'all';
 
-            // Decide which grids to display
             if (isGlobalSearch) {{
-                document.querySelectorAll('.grid.media-grid').forEach(grid => grid.style.display = 'grid');
+                document.querySelectorAll('.grid.media-grid').forEach(grid => grid.classList.remove('hidden'));
             }} else if (currentFolder) {{
-                document.querySelectorAll('.grid.media-grid').forEach(grid => grid.style.display = 'none');
-                document.getElementById('folder-' + currentFolder).style.display = 'grid';
+                document.querySelectorAll('.grid.media-grid').forEach(grid => grid.classList.add('hidden'));
+                let current = document.getElementById('folder-' + currentFolder);
+                if (current) current.classList.remove('hidden');
             }}
 
             const targetGrids = isGlobalSearch 
@@ -773,6 +725,7 @@ async def create_html_handler(bot, message):
                 : [document.getElementById('folder-' + currentFolder)];
             
             targetGrids.forEach(grid => {{
+                if (!grid) return;
                 let visibleCount = 0;
                 const cards = grid.querySelectorAll('.card.item-card');
                 
@@ -783,16 +736,19 @@ async def create_html_handler(bot, message):
                     const matchType = (currentFilter === 'all') || (currentFilter === type);
                     
                     if (matchSearch && matchType) {{
-                        card.style.display = 'flex';
+                        card.classList.remove('hidden');
                         visibleCount++;
                     }} else {{
-                        card.style.display = 'none';
+                        card.classList.add('hidden');
                     }}
                 }});
                 
-                // Hide the parent grid entirely if no items match inside it (prevents empty gaps)
                 if (isGlobalSearch) {{
-                    grid.style.display = visibleCount > 0 ? 'grid' : 'none';
+                    if (visibleCount > 0) {{
+                        grid.classList.remove('hidden');
+                    }} else {{
+                        grid.classList.add('hidden');
+                    }}
                 }}
             }});
         }}
